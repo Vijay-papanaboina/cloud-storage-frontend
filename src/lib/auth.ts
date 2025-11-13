@@ -52,7 +52,7 @@ export interface ApiKey {
 
 export interface CreateApiKeyRequest {
   name: string;
-  expiresAt?: string;
+  expiresInDays?: 30 | 60 | 90;
   permissions?: "READ_ONLY" | "READ_WRITE" | "FULL_ACCESS";
 }
 

@@ -19,7 +19,9 @@ export function Settings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
-  const [newKeyExpiry, setNewKeyExpiry] = useState("");
+  const [newKeyExpiryDays, setNewKeyExpiryDays] = useState<
+    30 | 60 | 90 | undefined
+  >(undefined);
   const [newKeyPermissions, setNewKeyPermissions] = useState<
     "READ_ONLY" | "READ_WRITE" | "FULL_ACCESS"
   >("FULL_ACCESS");
@@ -49,20 +51,20 @@ export function Settings() {
     try {
       const data: {
         name: string;
-        expiresAt?: string;
+        expiresInDays?: 30 | 60 | 90;
         permissions?: "READ_ONLY" | "READ_WRITE" | "FULL_ACCESS";
       } = {
         name: newKeyName,
         permissions: newKeyPermissions,
       };
-      if (newKeyExpiry) {
-        data.expiresAt = newKeyExpiry;
+      if (newKeyExpiryDays) {
+        data.expiresInDays = newKeyExpiryDays;
       }
 
       const newKey = await authApi.createApiKey(data);
       setNewlyCreatedKey(newKey.key || null);
       setNewKeyName("");
-      setNewKeyExpiry("");
+      setNewKeyExpiryDays(undefined);
       setNewKeyPermissions("FULL_ACCESS");
       showToast(
         "API key created successfully! Copy it now - it won't be shown again.",
@@ -134,14 +136,25 @@ export function Settings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="keyExpiry">Expiry Date (Optional)</Label>
-                  <Input
+                  <Label htmlFor="keyExpiry">Expires In (Optional)</Label>
+                  <select
                     id="keyExpiry"
-                    type="datetime-local"
-                    value={newKeyExpiry}
-                    onChange={(e) => setNewKeyExpiry(e.target.value)}
+                    value={newKeyExpiryDays || ""}
+                    onChange={(e) =>
+                      setNewKeyExpiryDays(
+                        e.target.value
+                          ? (Number(e.target.value) as 30 | 60 | 90)
+                          : undefined
+                      )
+                    }
                     disabled={isCreating}
-                  />
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Never expires</option>
+                    <option value="30">30 days</option>
+                    <option value="60">60 days</option>
+                    <option value="90">90 days</option>
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="keyPermissions">Permissions</Label>
