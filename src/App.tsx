@@ -9,6 +9,7 @@ import { Signup } from "@/pages/Signup";
 import { Home } from "@/pages/Home";
 import { Profile } from "@/pages/Profile";
 import { Settings } from "@/pages/Settings";
+import { ApiKeys } from "@/pages/ApiKeys";
 
 function AppRoutes() {
   const user = useAuthStore((state) => state.user);
@@ -63,6 +64,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <Settings />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/api-keys"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ApiKeys />
             </Layout>
           </ProtectedRoute>
         }

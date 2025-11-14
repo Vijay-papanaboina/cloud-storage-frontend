@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { authApi, type ApiKey } from "@/lib/auth";
+import { useState } from "react";
+import { useAuthStore } from "@/stores/authStore";
 import {
   Card,
   CardContent,
@@ -11,275 +11,286 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
-import { Key, Trash2, Copy, Check } from "lucide-react";
+import {
+  Settings as SettingsIcon,
+  User,
+  Mail,
+  Lock,
+  Calendar,
+  Shield,
+} from "lucide-react";
 import { format } from "date-fns";
 
 export function Settings() {
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
-  const [newKeyName, setNewKeyName] = useState("");
-  const [newKeyExpiryDays, setNewKeyExpiryDays] = useState<
-    30 | 60 | 90 | undefined
-  >(undefined);
-  const [newKeyPermissions, setNewKeyPermissions] = useState<
-    "READ_ONLY" | "READ_WRITE" | "FULL_ACCESS"
-  >("FULL_ACCESS");
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null);
+  const user = useAuthStore((state) => state.user);
+  const refreshUser = useAuthStore((state) => state.refreshUser);
   const { showToast } = useToast();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
-  const loadApiKeys = useCallback(async () => {
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
     try {
-      const keys = await authApi.listApiKeys();
-      setApiKeys(keys);
+      await refreshUser();
+      showToast("Profile refreshed", "success");
     } catch {
-      showToast("Failed to load API keys", "error");
+      showToast("Failed to refresh profile", "error");
     } finally {
-      setIsLoading(false);
+      setIsRefreshing(false);
     }
-  }, [showToast]);
+  };
 
-  useEffect(() => {
-    loadApiKeys();
-  }, [loadApiKeys]);
-
-  const handleCreateKey = async (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsCreating(true);
 
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      showToast("New passwords do not match", "error");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      showToast("Password must be at least 8 characters long", "error");
+      return;
+    }
+
+    setIsChangingPassword(true);
     try {
-      const data: {
-        name: string;
-        expiresInDays?: 30 | 60 | 90;
-        permissions?: "READ_ONLY" | "READ_WRITE" | "FULL_ACCESS";
-      } = {
-        name: newKeyName,
-        permissions: newKeyPermissions,
-      };
-      if (newKeyExpiryDays) {
-        data.expiresInDays = newKeyExpiryDays;
-      }
-
-      const newKey = await authApi.createApiKey(data);
-      setNewlyCreatedKey(newKey.key || null);
-      setNewKeyName("");
-      setNewKeyExpiryDays(undefined);
-      setNewKeyPermissions("FULL_ACCESS");
-      showToast(
-        "API key created successfully! Copy it now - it won't be shown again.",
-        "success"
-      );
-      await loadApiKeys();
+      // TODO: Implement password change API call when backend endpoint is available
+      // await authApi.changePassword({
+      //   currentPassword: passwordData.currentPassword,
+      //   newPassword: passwordData.newPassword,
+      // });
+      showToast("Password change feature coming soon", "info");
+      // setPasswordData({
+      //   currentPassword: "",
+      //   newPassword: "",
+      //   confirmPassword: "",
+      // });
     } catch (error: unknown) {
       const message =
         error && typeof error === "object" && "response" in error
           ? (error as { response?: { data?: { message?: string } } }).response
               ?.data?.message
           : undefined;
-      showToast(message || "Failed to create API key", "error");
+      showToast(message || "Failed to change password", "error");
     } finally {
-      setIsCreating(false);
+      setIsChangingPassword(false);
     }
-  };
-
-  const handleRevokeKey = async (id: string) => {
-    if (!confirm("Are you sure you want to revoke this API key?")) {
-      return;
-    }
-
-    try {
-      await authApi.revokeApiKey(id);
-      showToast("API key revoked", "success");
-      await loadApiKeys();
-    } catch {
-      showToast("Failed to revoke API key", "error");
-    }
-  };
-
-  const copyToClipboard = (text: string, keyId: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(keyId);
-    showToast("Copied to clipboard", "success");
-    setTimeout(() => setCopiedKey(null), 2000);
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">Settings</h1>
-          <p className="text-muted-foreground mt-2">Manage your API keys</p>
+          <div className="flex items-center gap-3 mb-2">
+            <SettingsIcon className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold">Settings</h1>
+          </div>
+          <p className="text-muted-foreground mt-2">
+            Manage your account settings and preferences
+          </p>
         </div>
 
-        <div className="space-y-6 max-w-4xl">
-          {/* Create New API Key */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Create New API Key</CardTitle>
+        <div className="space-y-6">
+          {/* Account Information */}
+          <Card className="border-2">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                <CardTitle className="text-xl">Account Information</CardTitle>
+              </div>
               <CardDescription>
-                Generate a new API key for CLI access. The key will only be
-                shown once.
+                View your account details and information
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateKey} className="space-y-4">
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="keyName">Key Name</Label>
-                  <Input
-                    id="keyName"
-                    value={newKeyName}
-                    onChange={(e) => setNewKeyName(e.target.value)}
-                    placeholder="e.g., My CLI Key"
-                    required
-                    disabled={isCreating}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="keyExpiry">Expires In (Optional)</Label>
-                  <select
-                    id="keyExpiry"
-                    value={newKeyExpiryDays || ""}
-                    onChange={(e) =>
-                      setNewKeyExpiryDays(
-                        e.target.value
-                          ? (Number(e.target.value) as 30 | 60 | 90)
-                          : undefined
-                      )
-                    }
-                    disabled={isCreating}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">Never expires</option>
-                    <option value="30">30 days</option>
-                    <option value="60">60 days</option>
-                    <option value="90">90 days</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="keyPermissions">Permissions</Label>
-                  <select
-                    id="keyPermissions"
-                    value={newKeyPermissions}
-                    onChange={(e) =>
-                      setNewKeyPermissions(
-                        e.target.value as
-                          | "READ_ONLY"
-                          | "READ_WRITE"
-                          | "FULL_ACCESS"
-                      )
-                    }
-                    disabled={isCreating}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="FULL_ACCESS">Full Access</option>
-                    <option value="READ_ONLY">Read Only</option>
-                    <option value="READ_WRITE">Read & Write</option>
-                  </select>
-                </div>
-                <Button type="submit" disabled={isCreating}>
-                  {isCreating ? "Creating..." : "Create API Key"}
-                </Button>
-              </form>
-
-              {newlyCreatedKey && (
-                <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-                  <p className="text-sm font-medium mb-2">
-                    Your new API key (copy this now!):
+                  <Label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    User ID
+                  </Label>
+                  <p className="text-base font-mono bg-muted px-3 py-2 rounded-md">
+                    {user?.id}
                   </p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 p-2 bg-background rounded text-sm font-mono break-all">
-                      {newlyCreatedKey}
-                    </code>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => copyToClipboard(newlyCreatedKey, "new")}
-                    >
-                      {copiedKey === "new" ? (
-                        <Check className="h-4 w-4" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Account Status
+                  </Label>
+                  <div>
+                    {user?.active ? (
+                      <span className="inline-flex items-center px-3 py-1 text-sm font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full">
+                        Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-3 py-1 text-sm font-medium bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-full">
+                        Inactive
+                      </span>
+                    )}
                   </div>
                 </div>
-              )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Username
+                </Label>
+                <p className="text-base bg-muted px-3 py-2 rounded-md">
+                  {user?.username}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Email
+                </Label>
+                <p className="text-base bg-muted px-3 py-2 rounded-md">
+                  {user?.email}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {user?.createdAt && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Account Created
+                    </Label>
+                    <p className="text-base bg-muted px-3 py-2 rounded-md">
+                      {format(new Date(user.createdAt), "PPp")}
+                    </p>
+                  </div>
+                )}
+                {user?.lastLoginAt && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Last Login
+                    </Label>
+                    <p className="text-base bg-muted px-3 py-2 rounded-md">
+                      {format(new Date(user.lastLoginAt), "PPp")}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  variant="outline"
+                >
+                  {isRefreshing ? "Refreshing..." : "Refresh Profile"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
-          {/* API Keys List */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Your API Keys</CardTitle>
-              <CardDescription>Manage your existing API keys</CardDescription>
+          {/* Change Password */}
+          <Card className="border-2">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-primary" />
+                <CardTitle className="text-xl">Change Password</CardTitle>
+              </div>
+              <CardDescription>
+                Update your account password to keep it secure
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
-                <p>Loading...</p>
-              ) : apiKeys.length === 0 ? (
-                <p className="text-muted-foreground">
-                  No API keys found. Create one above.
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {apiKeys.map((key) => (
-                    <div
-                      key={key.id}
-                      className="flex items-center justify-between p-4 border rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Key className="h-4 w-4 text-muted-foreground" />
-                          <h3 className="font-medium">{key.name}</h3>
-                          {key.active ? (
-                            <span className="px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
-                              Active
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 text-xs bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">
-                              Revoked
-                            </span>
-                          )}
-                          <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
-                            {key.permissions === "FULL_ACCESS"
-                              ? "Full Access"
-                              : key.permissions === "READ_ONLY"
-                              ? "Read Only"
-                              : "Read & Write"}
-                          </span>
-                        </div>
-                        <div className="text-sm text-muted-foreground space-y-1">
-                          <p>
-                            Created: {format(new Date(key.createdAt), "PPp")}
-                          </p>
-                          {key.expiresAt && (
-                            <p>
-                              Expires: {format(new Date(key.expiresAt), "PPp")}
-                            </p>
-                          )}
-                          {key.lastUsedAt && (
-                            <p>
-                              Last used:{" "}
-                              {format(new Date(key.lastUsedAt), "PPp")}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      {key.active && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleRevokeKey(key.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Revoke
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+              <form onSubmit={handlePasswordChange} className="space-y-5">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="currentPassword"
+                    className="text-base font-medium"
+                  >
+                    Current Password
+                  </Label>
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) =>
+                      setPasswordData({
+                        ...passwordData,
+                        currentPassword: e.target.value,
+                      })
+                    }
+                    placeholder="Enter your current password"
+                    required
+                    disabled={isChangingPassword}
+                    className="h-11"
+                  />
                 </div>
-              )}
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="newPassword"
+                    className="text-base font-medium"
+                  >
+                    New Password
+                  </Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) =>
+                      setPasswordData({
+                        ...passwordData,
+                        newPassword: e.target.value,
+                      })
+                    }
+                    placeholder="Enter your new password (min. 8 characters)"
+                    required
+                    disabled={isChangingPassword}
+                    minLength={8}
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="confirmPassword"
+                    className="text-base font-medium"
+                  >
+                    Confirm New Password
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) =>
+                      setPasswordData({
+                        ...passwordData,
+                        confirmPassword: e.target.value,
+                      })
+                    }
+                    placeholder="Confirm your new password"
+                    required
+                    disabled={isChangingPassword}
+                    minLength={8}
+                    className="h-11"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  className="w-full md:w-auto"
+                  size="lg"
+                >
+                  <Lock className="h-4 w-4 mr-2" />
+                  {isChangingPassword
+                    ? "Changing Password..."
+                    : "Change Password"}
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </div>

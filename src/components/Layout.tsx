@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
-import { LogOut, Home, User, Settings } from "lucide-react";
+import { LogOut, Home, User, Settings, Key } from "lucide-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((state) => state.user);
@@ -36,6 +36,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 >
                   <User className="h-4 w-4" />
                   Profile
+                </Link>
+                <Link
+                  to="/api-keys"
+                  className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                >
+                  <Key className="h-4 w-4" />
+                  API Keys
                 </Link>
                 <Link
                   to="/settings"

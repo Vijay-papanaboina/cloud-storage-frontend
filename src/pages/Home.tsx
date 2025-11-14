@@ -43,14 +43,14 @@ export function Home() {
 
           <Card>
             <CardHeader>
-              <Key className="h-8 w-8 mb-2" />
+              <Key className="h-8 w-8 mb-2 text-primary" />
               <CardTitle>API Keys</CardTitle>
               <CardDescription>
-                Manage your API keys for CLI access
+                Manage your API keys for CLI and programmatic access
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link to="/settings">
+              <Link to="/api-keys">
                 <Button variant="outline" className="w-full">
                   Manage API Keys
                 </Button>
@@ -60,9 +60,11 @@ export function Home() {
 
           <Card>
             <CardHeader>
-              <Settings className="h-8 w-8 mb-2" />
+              <Settings className="h-8 w-8 mb-2 text-primary" />
               <CardTitle>Settings</CardTitle>
-              <CardDescription>Configure your account settings</CardDescription>
+              <CardDescription>
+                Update your account settings and change password
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Link to="/settings">
