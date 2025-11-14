@@ -58,7 +58,9 @@ export interface CreateApiKeyRequest {
 
 export const authApi = {
   login: async (data: LoginRequest): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>("/auth/login", data);
+    const response = await api.post<AuthResponse>("/auth/login", data, {
+      withCredentials: true, // Required to receive the refresh token cookie
+    });
     return response.data;
   },
 
@@ -68,7 +70,13 @@ export const authApi = {
   },
 
   logout: async (): Promise<void> => {
-    await api.post("/auth/logout", {});
+    await api.post(
+      "/auth/logout",
+      {},
+      {
+        withCredentials: true, // Required to send/clear the refresh token cookie
+      }
+    );
   },
 
   getCurrentUser: async (): Promise<User> => {

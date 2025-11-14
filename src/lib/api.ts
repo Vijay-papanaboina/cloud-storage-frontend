@@ -13,9 +13,12 @@ export const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Skip adding Authorization header for refresh endpoint (it uses cookie, not Authorization header)
+    if (!config.url?.includes("/auth/refresh")) {
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -30,6 +33,13 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Skip refresh if this is already a refresh request to avoid infinite loop
+    if (originalRequest?.url?.includes("/auth/refresh")) {
+      return Promise.reject(error);
+    }
+
+    // Handle 401 (Unauthorized) for expired/invalid tokens
+    // 403 (Forbidden) indicates authorization failure (valid token but insufficient permissions)
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
